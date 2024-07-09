@@ -132,15 +132,13 @@ async function renameStatusMessage(client) {
 
 	const serversPromises = config.Mindustry.Servers.map(async (serverHost) => {
 		try {
-			const serverPing = await GetMindustryServerPing(serverHost.hostname)
+			const serverPing = await GetMindustryServerPing(serverHost.hostname).catch(() => null)
 
-			if (Number(serverPing.time) > 0) {
-				const serverStats = await GetMindustryServerStats(serverHost)
+			const serverStats = await GetMindustryServerStats(serverHost)
 
-				return {
-					ping: serverPing.time,
-					...serverStats
-				}
+			return {
+				ping: serverPing?.time || -1,
+				...serverStats
 			}
 		} catch (error) {
 		}
@@ -189,7 +187,7 @@ async function botReadyEvent(client) {
 
 	updateInterval = setInterval(async () => {
 		await renameStatusMessage(client);
-	}, 60 * 1000);
+	}, 70 * 1000);
 }
 
 new MinServerMonBot().init();
