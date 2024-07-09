@@ -7,6 +7,7 @@
 		"ping": "^0.4.4"
 	},
 	"scripts": {
-		"start": "node index.js"
+		"start": "node index.js",
+		"build": "npm i"
 	}
 }
