@@ -167,7 +167,7 @@ async function renameStatusMessage(client) {
 		])
 		.setFooter({
 			text: [
-				`Оновлення кожну хвилину. В останнє: ${moment().locale("Europe/Kiev").format("DD.MM.YYYY HH:mm:ss")}`,
+				`Оновлення кожну хвилину. В останнє: ${moment().locale("uk-UA").format("DD.MM HH:mm:ss")}`,
 				makarasty && `Made by: ${makarasty.user.tag}`
 			].join("\n"),
 			iconURL: makarasty.user.displayAvatarURL() || undefined
