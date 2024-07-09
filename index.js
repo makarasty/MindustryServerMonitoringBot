@@ -1,10 +1,15 @@
 const { Client, Events, EmbedBuilder, Message } = require("discord.js");
 const mindustry = require("mindustry.js");
-const config = require("./config.js");
-const ping = require("ping");
-const moment = require("moment");
+
+const moment = require('moment-timezone');
+
 require("dotenv/config");
 
+const config = require("./config.js");
+
+/**
+ * @type {NodeJS.Timeout}
+ */
 let updateInterval;
 
 process
@@ -43,13 +48,6 @@ class MinServerMonBot extends Client {
  * @property {string} hostname
  * @property {number} port
  */
-
-/**
- * @param {string} serverIP
- */
-async function GetMindustryServerPing(serverIP) {
-	return ping.promise.probe(serverIP)
-}
 
 /**
  * @param {mindustryServerHost} serverHost
@@ -132,16 +130,10 @@ async function renameStatusMessage(client) {
 
 	const serversPromises = config.Mindustry.Servers.map(async (serverHost) => {
 		try {
-			const serverPing = await GetMindustryServerPing(serverHost.hostname).catch(() => null)
-
 			const serverStats = await GetMindustryServerStats(serverHost)
 
-			return {
-				ping: serverPing?.time,
-				...serverStats
-			}
-		} catch (error) {
-		}
+			return serverStats
+		} catch (error) { }
 	})
 
 	const servers = (await Promise.all(serversPromises)).map((server) => {
@@ -161,13 +153,13 @@ async function renameStatusMessage(client) {
 				name: `${server ? "<a:offline:1260198905564499990>" : "<a:online:1260198907053609113>"}\u2000${server?.name || "Невідомий сервер"}`,
 				value: [
 					`\`${config.Mindustry.Servers[index].hostname}:${config.Mindustry.Servers[index].port}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${server?.playerLimit || "0"}\``,
-					`\`${(server?.ping === undefined || server?.ping === null) ? "-1" : server.ping}\`мс - **Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
+					`**Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
 				].join("\n")
 			}))
 		])
 		.setFooter({
 			text: [
-				`Оновлення кожну хвилину. В останнє: ${moment().locale("uk-UA").format("DD.MM HH:mm:ss")}`,
+				`Оновлення кожну хвилину. В останнє: ${moment().tz("Europe/Kiev").locale("uk").format("DD.MM HH:mm:ss")}`,
 				makarasty && `Made by: ${makarasty.user.tag}`
 			].join("\n"),
 			iconURL: makarasty.user.displayAvatarURL() || undefined
@@ -181,6 +173,7 @@ async function renameStatusMessage(client) {
  * @param {Client<true>} client
  */
 async function botReadyEvent(client) {
+	updateInterval && clearInterval(updateInterval);
 	console.info(`Discord bot ready as user: ${client.user.tag}`);
 
 	await renameStatusMessage(client);
