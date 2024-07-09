@@ -16,5 +16,4 @@
 - discord.js
 - dotenv
 - mindustry.js
-- moment
-- ping
+- moment-timezone
