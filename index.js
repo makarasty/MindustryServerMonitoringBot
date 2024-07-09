@@ -161,7 +161,7 @@ async function renameStatusMessage(client) {
 				name: `${server ? "<a:offline:1260198905564499990>" : "<a:online:1260198907053609113>"}\u2000${server?.name || "Невідомий сервер"}`,
 				value: [
 					`\`${config.Mindustry.Servers[index].hostname}:${config.Mindustry.Servers[index].port}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${server?.playerLimit || "0"}\``,
-					`\`${server?.ping || "-1"}\`мс - **Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
+					`\`${(server?.ping === undefined || server?.ping === null) ? "-1" : server.ping}\`мс - **Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
 				].join("\n")
 			}))
 		])
