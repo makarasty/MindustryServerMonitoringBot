@@ -90,7 +90,6 @@ async function GetMindustryServerStats(serverHost) {
  * @param {Message<boolean>} message
  */
 async function botMessageEvent(client, message) {
-	console.log(0);
 	if (message.channel.isDMBased()) return // Ignore DMs
 	if (message.author.bot) return // Ignore bots
 
@@ -154,7 +153,7 @@ async function renameStatusMessage(client) {
 	const embed = new EmbedBuilder()
 		.setColor(0xFFD700)
 		.setTitle("Mindustry Servers Monitoring")
-		.setDescription(`**Серверів**: \`${servers.length}\`, **Гравців**: \`${servers.reduce((count, server) => server?.online ? server.players : 0, 0)}\``)
+		.setDescription(`**Серверів**: \`${servers.length}\`, **Гравців**: \`${servers.reduce((count, server) => server?.online ? count + server.players : count, 0)}\``)
 		.setFields([
 			{
 				name: "\u2000",
