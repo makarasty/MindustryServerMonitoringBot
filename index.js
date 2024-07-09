@@ -137,7 +137,7 @@ async function renameStatusMessage(client) {
 			const serverStats = await GetMindustryServerStats(serverHost)
 
 			return {
-				ping: serverPing?.time || -1,
+				ping: serverPing?.time,
 				...serverStats
 			}
 		} catch (error) {
