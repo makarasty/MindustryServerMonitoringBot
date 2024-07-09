@@ -6,10 +6,11 @@
 - `cd ./MindustryServerMonitoringBot/` Go to bot directory
 - `npm i` Install the bot components
 - `>>> Configure .env <<<`
+- `node .` Start the bot
 - `>>> Configure config.js <<<`
 - in order for the bot to send a message, use `@bot setup`
 - ![image](https://github.com/makarasty/MindustryServerMonitoringBot/assets/71918286/fa3e7a63-f46a-4ef3-8f4c-53d3bd94af0b)
-- `node .` Start the bot
+- restart the bot!
 
 # OS Dependencies
 - Node.js
