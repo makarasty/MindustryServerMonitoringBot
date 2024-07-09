@@ -5,5 +5,8 @@
 		"mindustry.js": "^0.1.5",
 		"moment": "^2.30.1",
 		"ping": "^0.4.4"
+	},
+	"scripts": {
+		"start": "node index.js"
 	}
 }
