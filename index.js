@@ -150,7 +150,7 @@ async function renameStatusMessage(client) {
 				value: "\u2000"
 			},
 			...servers.map((server, index) => ({
-				name: `${server ? "<a:offline:1260198905564499990>" : "<a:online:1260198907053609113>"}\u2000${server?.name || "Невідомий сервер"}`,
+				name: `${server ? config.Bot.OnlineEmoji : config.Bot.OfflineEmoji}\u2000${server?.name || "Невідомий сервер"}`,
 				value: [
 					`\`${config.Mindustry.Servers[index].hostname}:${config.Mindustry.Servers[index].port}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${server?.playerLimit || "0"}\``,
 					`**Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
@@ -159,7 +159,7 @@ async function renameStatusMessage(client) {
 		])
 		.setFooter({
 			text: [
-				`Оновлення кожну хвилину. В останнє: ${moment().tz("Europe/Kiev").locale("uk").format("DD.MM HH:mm:ss")}`,
+				`Оновлення кожну хвилину. В останнє: ${moment().tz(config.Bot.Timezone).locale(config.Bot.TimeLocale).format(config.Bot.TimeFormat)}`,
 				makarasty && `Made by: ${makarasty.user.tag}`
 			].join("\n"),
 			iconURL: makarasty.user.displayAvatarURL() || undefined
