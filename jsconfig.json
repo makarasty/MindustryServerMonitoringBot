@@ -1,0 +1,12 @@
+{
+	"compilerOptions": {
+		"baseUrl": "./",
+		"target": "ESNext",
+		"module": "NodeNext",
+		"checkJs": true,
+		"strict": true,
+		"skipLibCheck": true,
+		"resolveJsonModule": true
+	},
+	"exclude": ["node_modules"]
+}
