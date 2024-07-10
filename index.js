@@ -65,11 +65,11 @@ async function GetMindustryServerStats(serverHost) {
  * @param {Message<boolean>} message
  */
 async function botMessageEvent(client, message) {
-	if (message.channel.isDMBased()) return; // Ignore DMs
-	if (message.author.bot) return; // Ignore bots
+	if (message.channel.isDMBased()) return;
+	if (message.author.bot) return;
 
-	if (!message.content.startsWith(client.user.toString())) return; // Ignore messages not with bot ping
-	if (!message.content.endsWith("setup")) return; // Ignore not setup messages
+	if (!message.content.startsWith(client.user.toString())) return;
+	if (!message.content.endsWith("setup")) return;
 
 	const content = [
 		"Це повідомлення готове до налаштувань!",
