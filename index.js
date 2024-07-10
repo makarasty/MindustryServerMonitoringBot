@@ -1,4 +1,4 @@
-const { Client, Events, EmbedBuilder, Message } = require("discord.js");
+const { Client, Events, EmbedBuilder, Message, ActivityType } = require("discord.js");
 const mindustry = require("mindustry.js");
 
 const moment = require('moment-timezone');
@@ -142,11 +142,22 @@ async function renameStatusMessage(client) {
 /**
  * @param {Client<true>} client
  */
+async function botSetStatus(client) {
+	return client.user.setActivity("Слідкую за серверами mindustry", {
+		type: ActivityType.Watching,
+		url: 'https://www.twitch.tv/makarasty'
+	})
+}
+
+/**
+ * @param {Client<true>} client
+ */
 async function botReadyEvent(client) {
 	updateInterval && clearInterval(updateInterval);
 
 	console.info(`Discord bot ready as user: ${client.user.tag}`);
 
+	await botSetStatus(client);
 	await renameStatusMessage(client);
 
 	updateInterval = setInterval(async () => {
