@@ -48,16 +48,24 @@ class MinServerMonBot extends Client {
  * @returns {Promise<(mindustryServerHost & {online: boolean} & mindustry.ServerData)?>}
  */
 async function GetMindustryServerStats(serverHost) {
-	const server = new mindustry.Server(serverHost.hostname, serverHost.port);
+	return new Promise(async (resolve, reject) => {
+		const justDie = setTimeout(() => {
+			server.close();
+			resolve(null);
+		}, 5000);
 
-	try {
-		const data = await server.getData();
-		return { ...serverHost, ...data, online: true };
-	} catch {
-		return null;
-	} finally {
-		server.close();
-	}
+		const server = new mindustry.Server(serverHost.hostname, serverHost.port);
+
+		try {
+			const data = await server.getData();
+			resolve({ ...serverHost, ...data, online: true })
+		} catch {
+			resolve(null)
+		} finally {
+			clearTimeout(justDie);
+			server.close();
+		}
+	})
 }
 
 /**
