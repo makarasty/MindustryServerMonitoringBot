@@ -3,12 +3,16 @@ const config = {
 		Servers: [
 			{
 				hostname: "194.247.42.131",
-				port: 27715
+				port: 27715,
 			},
 			{
 				hostname: "194.247.42.131",
-				port: 27512
-			}
+				port: 27512,
+			},
+			{
+				hostname: "194.247.42.130",
+				port: 27505,
+			},
 		],
 	},
 
@@ -25,7 +29,7 @@ const config = {
 
 		OnlineEmoji: "<a:online:1260198905564499990>",
 		OfflineEmoji: "<a:offline:1260198907053609113>",
-	}
-}
+	},
+};
 
-module.exports = config
+module.exports = config;

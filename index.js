@@ -1,7 +1,13 @@
-const { Client, Events, EmbedBuilder, Message, ActivityType } = require("discord.js");
+const {
+	Client,
+	Events,
+	EmbedBuilder,
+	Message,
+	ActivityType,
+} = require("discord.js");
 const mindustry = require("mindustry.js");
 
-const moment = require('moment-timezone');
+const moment = require("moment-timezone");
 
 require("dotenv/config");
 
@@ -10,13 +16,18 @@ const config = require("./config.js");
 /**
  * @type {NodeJS.Timeout}
  */
-let updateInterval;
+let testUpdateInterval;
+
+/**
+ * @type {NodeJS.Timeout}
+ */
+let statusUpdateInterval;
 
 process
 	.on("uncaughtExceptionMonitor", (error) => console.info(error))
 	.on("unhandledRejection", (error) => console.info(error))
 	.on("uncaughtException", (error) => console.info(error))
-	.on("warning", (error) => console.info(error))
+	.on("warning", (error) => console.info(error));
 
 /**
  * @class
@@ -26,14 +37,14 @@ class MinServerMonBot extends Client {
 	constructor() {
 		super({
 			intents: 47007,
-			shards: 0
-		})
+			shards: 0,
+		});
 	}
 	async init() {
 		this.once(Events.ClientReady, botReadyEvent.bind(null, this));
 		this.on(Events.MessageCreate, botMessageEvent.bind(null, this));
 
-		await this.login(process.env.TOKEN)
+		await this.login(process.env.TOKEN);
 	}
 }
 
@@ -58,14 +69,14 @@ async function GetMindustryServerStats(serverHost) {
 
 		try {
 			const data = await server.getData();
-			resolve({ ...serverHost, ...data, online: true })
+			resolve({ ...serverHost, ...data, online: true });
 		} catch {
-			resolve(null)
+			resolve(null);
 		} finally {
 			clearTimeout(justDie);
 			server.close();
 		}
-	})
+	});
 }
 
 /**
@@ -81,14 +92,14 @@ async function botMessageEvent(client, message) {
 
 	const content = [
 		"Це повідомлення готове до налаштувань!",
-		`**channelID:** \`${message.channel.id}\``
-	]
+		`**channelID:** \`${message.channel.id}\``,
+	];
 
-	const setupMessage = await message.channel.send(content.join("\n"))
+	const setupMessage = await message.channel.send(content.join("\n"));
 
-	content.push(`**messageID:** \`${setupMessage.id}\``)
+	content.push(`**messageID:** \`${setupMessage.id}\``);
 
-	await setupMessage.edit(content.join("\n"))
+	await setupMessage.edit(content.join("\n"));
 }
 
 /**
@@ -101,47 +112,67 @@ async function renameStatusMessage(client) {
 	const [channel, makarasty] = await Promise.all([
 		guild.channels.fetch(config.Monitoring.ChannelID),
 		guild.members.fetch("509734900182548489"),
-	])
+	]);
 
 	if (!channel) throw new Error("Channel not found");
 	if (!channel.isTextBased()) throw new Error("Channel is not text based");
 
 	const [message, typing] = await Promise.all([
 		channel.messages.fetch(config.Monitoring.MessageID),
-		channel.sendTyping()
-	])
+		channel.sendTyping(),
+	]);
 
 	if (!message) throw new Error("Message not found");
 
 	const serversData = await Promise.all(
-		config.Mindustry.Servers.map(async (serverHost) => GetMindustryServerStats(serverHost).catch(() => null))
-	)
+		config.Mindustry.Servers.map(async (serverHost) =>
+			GetMindustryServerStats(serverHost).catch(() => null),
+		),
+	);
 
 	const embed = new EmbedBuilder()
-		.setColor(0xFFD700)
+		.setColor(0xffd700)
 		.setTitle("Mindustry Servers Monitoring")
-		.setDescription(`**Серверів**: \`${serversData.length}\`, **Гравців**: \`${serversData.reduce((count, server) => server?.online ? count + server.players : count, 0)}\``)
+		.setDescription(
+			`**Серверів**: \`${
+				serversData.length
+			}\`, **Гравців**: \`${serversData.reduce(
+				(count, server) => (server?.online ? count + server.players : count),
+				0,
+			)}\``,
+		)
 		.setFields(
 			serversData.map((server, index) => ({
-				name: `${server ? config.Bot.OnlineEmoji : config.Bot.OfflineEmoji}\u2000${server?.name || "Невідомий сервер"}`,
+				name: `${
+					server ? config.Bot.OnlineEmoji : config.Bot.OfflineEmoji
+				}\u2000${server?.name || "Невідомий сервер"}`,
 				value: [
-					`\`${config.Mindustry.Servers[index].hostname}:${config.Mindustry.Servers[index].port}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${server?.playerLimit || "0"}\``,
-					`**Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${server?.gamemode || "Невідомий режим"}\` (\`${server?.wave || 0}\`)`
-				].join("\n")
-			}))
+					`\`${config.Mindustry.Servers[index].hostname}:${
+						config.Mindustry.Servers[index].port
+					}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${
+						server?.playerLimit || "0"
+					}\``,
+					`**Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${
+						server?.gamemode || "Невідомий режим"
+					}\` (\`${server?.wave || 0}\`)`,
+				].join("\n"),
+			})),
 		)
 		.setFooter({
 			text: [
-				`Оновлення кожну хвилину. В останнє: ${moment().tz(config.Bot.Timezone).locale(config.Bot.TimeLocale).format(config.Bot.TimeFormat)}`,
-				makarasty && `Made by: ${makarasty.user.tag}`
+				`Оновлення кожну хвилину. В останнє: ${moment()
+					.tz(config.Bot.Timezone)
+					.locale(config.Bot.TimeLocale)
+					.format(config.Bot.TimeFormat)}`,
+				makarasty && `Made by: ${makarasty.user.tag}`,
 			].join("\n"),
-			iconURL: makarasty?.user.displayAvatarURL() || undefined
-		})
+			iconURL: makarasty?.user.displayAvatarURL() || undefined,
+		});
 
 	await message.edit({
 		embeds: [embed],
 		components: [],
-		content: ""
+		content: "",
 	});
 
 	console.log("Повідомлення успішно змінено!");
@@ -153,22 +184,28 @@ async function renameStatusMessage(client) {
 async function botSetStatus(client) {
 	return client.user.setActivity("Слідкую за серверами mindustry", {
 		type: ActivityType.Watching,
-		url: 'https://www.twitch.tv/makarasty'
-	})
+		url: "https://www.twitch.tv/makarasty",
+	});
 }
 
 /**
  * @param {Client<true>} client
  */
 async function botReadyEvent(client) {
-	updateInterval && clearInterval(updateInterval);
+	testUpdateInterval && clearInterval(testUpdateInterval);
+	statusUpdateInterval && clearInterval(statusUpdateInterval);
 
 	console.info(`Discord bot ready as user: ${client.user.tag}`);
 
 	await botSetStatus(client);
+
+	statusUpdateInterval = setInterval(async () => {
+		await botSetStatus(client);
+	}, 30 * 60 * 1000);
+
 	await renameStatusMessage(client);
 
-	updateInterval = setInterval(async () => {
+	testUpdateInterval = setInterval(async () => {
 		await renameStatusMessage(client);
 	}, 65 * 1000);
 }
