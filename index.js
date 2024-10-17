@@ -1,33 +1,52 @@
+require("dotenv/config");
+
 const {
 	Client,
 	Events,
 	EmbedBuilder,
 	Message,
-	ActivityType,
+	Partials,
+	GatewayIntentBits,
 } = require("discord.js");
+
 const mindustry = require("mindustry.js");
 
 const moment = require("moment-timezone");
 
-require("dotenv/config");
-
 const config = require("./config.js");
-
-/**
- * @type {NodeJS.Timeout}
- */
-let testUpdateInterval;
-
-/**
- * @type {NodeJS.Timeout}
- */
-let statusUpdateInterval;
 
 process
 	.on("uncaughtExceptionMonitor", (error) => console.info(error))
 	.on("unhandledRejection", (error) => console.info(error))
 	.on("uncaughtException", (error) => console.info(error))
 	.on("warning", (error) => console.info(error));
+
+const partials = [
+	Partials.Channel,
+	Partials.GuildMember,
+	Partials.Message,
+	Partials.User,
+];
+
+const intents = [
+	GatewayIntentBits.GuildEmojisAndStickers,
+	GatewayIntentBits.GuildMessageReactions,
+	GatewayIntentBits.MessageContent,
+	GatewayIntentBits.DirectMessages,
+	GatewayIntentBits.GuildIntegrations,
+	GatewayIntentBits.GuildMembers,
+	GatewayIntentBits.GuildMessages,
+	GatewayIntentBits.GuildModeration,
+	GatewayIntentBits.Guilds,
+];
+
+/**
+ * @param {string} message
+ * @returns {string}
+ */
+function removeColorCodes(message) {
+	return message.replace(/\[[^\]]+\]/g, "");
+}
 
 /**
  * @class
@@ -36,8 +55,10 @@ process
 class MinServerMonBot extends Client {
 	constructor() {
 		super({
-			intents: 47007,
 			shards: 0,
+			shardCount: 1,
+			partials,
+			intents,
 		});
 	}
 	async init() {
@@ -57,26 +78,40 @@ class MinServerMonBot extends Client {
 /**
  * @param {mindustryServerHost} serverHost
  * @returns {Promise<(mindustryServerHost & {online: boolean} & mindustry.ServerData)?>}
+ *  Returns a promise that resolves to an object containing the server host,
+ *  server data, and online status if successful, or null if the server is offline or an error occurs.
  */
 async function GetMindustryServerStats(serverHost) {
-	return new Promise(async (resolve, reject) => {
-		const justDie = setTimeout(() => {
-			server.close();
-			resolve(null);
-		}, 5000);
+	const TIMEOUT_DURATION = 5000;
 
-		const server = new mindustry.Server(serverHost.hostname, serverHost.port);
+	const server = new mindustry.Server(serverHost.hostname, serverHost.port);
 
-		try {
-			const data = await server.getData();
-			resolve({ ...serverHost, ...data, online: true });
-		} catch {
-			resolve(null);
-		} finally {
-			clearTimeout(justDie);
-			server.close();
+	try {
+		const fetchDataPromise = server.getData();
+
+		const timeoutPromise = new Promise((resolve) => {
+			setTimeout(() => {
+				resolve(null);
+			}, TIMEOUT_DURATION);
+		});
+
+		const data = await Promise.race([fetchDataPromise, timeoutPromise]);
+
+		if (data) {
+			return { ...serverHost, ...data, online: true };
+		} else {
+			return null;
 		}
-	});
+	} catch (error) {
+		if (error instanceof Error) {
+			console.error(
+				`Error fetching data from server ${serverHost.hostname}:${serverHost.port} - ${error.message}`,
+			);
+		}
+		return null;
+	} finally {
+		server.close();
+	}
 }
 
 /**
@@ -106,23 +141,49 @@ async function botMessageEvent(client, message) {
  * @param {Client<true>} client
  */
 async function renameStatusMessage(client) {
-	const guild = await client.guilds.fetch(config.Monitoring.GuildID);
-	if (!guild) throw new Error("Guild not found");
+	const guildId = config.Monitoring.GuildID;
+	const guild = await client.guilds.fetch(guildId);
 
-	const [channel, makarasty] = await Promise.all([
-		guild.channels.fetch(config.Monitoring.ChannelID),
-		guild.members.fetch("509734900182548489"),
+	if (!guild) {
+		throw new Error(`Guild with ID ${guildId} not found.`);
+	}
+
+	const channelId = config.Monitoring.ChannelID;
+	const ownerId = config.Bot.OwnerId;
+
+	const [channel, owner] = await Promise.all([
+		guild.channels.fetch(channelId),
+		guild.members.fetch(ownerId),
 	]);
 
-	if (!channel) throw new Error("Channel not found");
-	if (!channel.isTextBased()) throw new Error("Channel is not text based");
+	if (!channel) {
+		throw new Error(
+			`Channel with ID ${channelId} not found in guild ${guild.name}.`,
+		);
+	}
+
+	if (!channel.isTextBased()) {
+		throw new Error(`Channel ${channel.name} is not a text-based channel.`);
+	}
+
+	if (!owner) {
+		throw new Error(
+			`Member with ID ${ownerId} not found in guild ${guild.name}.`,
+		);
+	}
+
+	const messageId = config.Monitoring.MessageID;
 
 	const [message, typing] = await Promise.all([
-		channel.messages.fetch(config.Monitoring.MessageID),
+		channel.messages.fetch(messageId),
 		channel.sendTyping(),
 	]);
 
-	if (!message) throw new Error("Message not found");
+	if (!message) {
+		throw new Error(
+			`Message with ID ${messageId} not found in channel ${channel.name}.`,
+		);
+	}
 
 	const serversData = await Promise.all(
 		config.Mindustry.Servers.map(async (serverHost) =>
@@ -130,82 +191,111 @@ async function renameStatusMessage(client) {
 		),
 	);
 
+	const totalServers = serversData.length;
+
+	const totalPlayers = serversData.reduce((count, server) => {
+		if (server?.online) {
+			return count + server.players;
+		}
+
+		return count;
+	}, 0);
+
+	const footerText = [
+		`Оновлення кожну хвилину. В останнє: ${moment()
+			.tz(config.Bot.Timezone)
+			.locale(config.Bot.TimeLocale)
+			.format(config.Bot.TimeFormat)}`,
+		owner ? `Made by: ${owner.user.tag}` : null,
+	]
+		.filter(Boolean)
+		.join("\n");
+
+	const footerIconURL = owner?.user.displayAvatarURL() || undefined;
+
 	const embed = new EmbedBuilder()
 		.setColor(0xffd700)
 		.setTitle("Mindustry Servers Monitoring")
 		.setDescription(
-			`**Серверів**: \`${
-				serversData.length
-			}\`, **Гравців**: \`${serversData.reduce(
-				(count, server) => (server?.online ? count + server.players : count),
-				0,
-			)}\``,
+			`**Серверів**: \`${totalServers}\`, **Гравців**: \`${totalPlayers}\``,
 		)
-		.setFields(
-			serversData.map((server, index) => ({
-				name: `${
-					server ? config.Bot.OnlineEmoji : config.Bot.OfflineEmoji
-				}\u2000${server?.name || "Невідомий сервер"}`,
-				value: [
-					`\`${config.Mindustry.Servers[index].hostname}:${
-						config.Mindustry.Servers[index].port
-					}\` **-** **Гравців**: \`${server?.players || "0"}\`/\`${
-						server?.playerLimit || "0"
-					}\``,
-					`**Карта**: \`${server?.map || "Невідома карта"}\` **/** \`${
-						server?.gamemode || "Невідомий режим"
-					}\` (\`${server?.wave || 0}\`)`,
-				].join("\n"),
-			})),
+		.addFields(
+			serversData.map((server, index) => {
+				const isOnline = Boolean(server?.online);
+
+				const thatServerConfig = config.Mindustry.Servers[index];
+
+				const statusEmoji = isOnline
+					? config.Bot.OnlineEmoji
+					: config.Bot.OfflineEmoji;
+
+				const serverName = server?.name
+					? removeColorCodes(server?.name)
+					: thatServerConfig?.name || "Невідомий сервер";
+
+				const { hostname, port } = thatServerConfig || {
+					hostname: "Unknown hostname",
+					port: "Unknown port",
+				};
+
+				const currentPlayers = server?.players || "0";
+				const playerLimit = server?.playerLimit || "0";
+
+				const map = server?.map || "Невідома карта";
+				const gamemode = server?.gamemode || "Невідомий режим";
+
+				const fieldName = `${statusEmoji}\u2000${serverName}`;
+
+				const fieldValue = [
+					`\`${hostname}:${port}\` **-** **Гравців**: \`${currentPlayers}\`/\`${playerLimit}\``,
+					`**Карта**: \`${map}\` **/** \`${gamemode}\``,
+				].join("\n");
+
+				return {
+					name: fieldName,
+					value: fieldValue,
+				};
+			}),
 		)
 		.setFooter({
-			text: [
-				`Оновлення кожну хвилину. В останнє: ${moment()
-					.tz(config.Bot.Timezone)
-					.locale(config.Bot.TimeLocale)
-					.format(config.Bot.TimeFormat)}`,
-				makarasty && `Made by: ${makarasty.user.tag}`,
-			].join("\n"),
-			iconURL: makarasty?.user.displayAvatarURL() || undefined,
+			text: footerText,
+			iconURL: footerIconURL,
 		});
 
 	await message.edit({
 		embeds: [embed],
-		components: [],
-		content: "",
+		components: undefined,
+		content: null,
 	});
 
-	console.log("Повідомлення успішно змінено!");
+	console.log("Message successfully changed!");
 }
 
 /**
  * @param {Client<true>} client
  */
 async function botSetStatus(client) {
-	return client.user.setActivity("Слідкую за серверами mindustry", {
-		type: ActivityType.Watching,
-		url: "https://www.twitch.tv/makarasty",
-	});
+	return client.user.setActivity(
+		config.Bot.Status.text,
+		config.Bot.Status.options,
+	);
 }
 
 /**
  * @param {Client<true>} client
  */
 async function botReadyEvent(client) {
-	testUpdateInterval && clearInterval(testUpdateInterval);
-	statusUpdateInterval && clearInterval(statusUpdateInterval);
-
 	console.info(`Discord bot ready as user: ${client.user.tag}`);
 
 	await botSetStatus(client);
 
-	statusUpdateInterval = setInterval(async () => {
+	setInterval(async () => {
 		await botSetStatus(client);
 	}, 30 * 60 * 1000);
 
 	await renameStatusMessage(client);
 
-	testUpdateInterval = setInterval(async () => {
+	setInterval(async () => {
 		await renameStatusMessage(client);
 	}, 65 * 1000);
 }
