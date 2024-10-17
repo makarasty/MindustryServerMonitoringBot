@@ -1,6 +1,6 @@
 # Mindustry Server Monitoring Discord Bot
 
-![image](https://github.com/user-attachments/assets/93c34b51-cb7c-4161-ad79-5842574b99a2)
+![Bot Banner](https://github.com/user-attachments/assets/93c34b51-cb7c-4161-ad79-5842574b99a2)
 
 A Discord bot built with Discord.js to monitor and display the status of Mindustry game servers. It provides real-time updates on server activity, player counts, and other vital statistics directly within your Discord server.
 
@@ -22,7 +22,7 @@ A Discord bot built with Discord.js to monitor and display the status of Mindust
 - **Comprehensive Embeds:** Displays detailed server information including player counts, maps, game modes, and more using Discord embeds.
 - **Automated Updates:** Refreshes server data at regular intervals (e.g., every minute) to ensure up-to-date information.
 - **Customizable Alerts:** Sends notifications for server status changes (online/offline).
-- **User-Friendly Configuration:** Easily set up and manage server IDs, channel IDs, and other settings via a configuration file.
+- **User-Friendly Configuration:** Easily set up and manage server IDs, channel IDs, and other settings via a configuration file and setup commands.
 - **Error Handling:** Robust error management to handle scenarios like missing guilds, channels, or messages gracefully.
 
 ## Prerequisites
@@ -33,13 +33,14 @@ Before setting up the bot, ensure you have the following:
 - **Discord Bot Token:** You can create a bot and obtain its token from the [Discord Developer Portal](https://discord.com/developers/applications).
 - **Mindustry Server Details:** Hostnames and ports of the Mindustry servers you wish to monitor.
 - **Git:** For cloning the repository. [Download Git](https://git-scm.com/)
+- **Environment Variables Management:** It's recommended to use a `.env` file to securely manage your bot's token and other sensitive information. You can use the [dotenv](https://www.npmjs.com/package/dotenv) package for this purpose.
 
 ## Installation
 
 1. **Clone the Repository:**
 
    ```bash
-   git clone https://github.com/makarasty/MindustryServerMonitoringBot
+   git clone https://github.com/makarasty/MindustryServerMonitoringBot.git
    cd MindustryServerMonitoringBot
    ```
 
@@ -49,20 +50,36 @@ Before setting up the bot, ensure you have the following:
    npm install
    ```
 
-   This will install all necessary packages, including `discord.js` and `moment-timezone`.
+   This will install all necessary packages, including `discord.js`, `mindustry.js`, and `moment-timezone`.
 
-3. **Set Up Configuration:**
+3. **Set Up Environment Variables:**
 
-   Edit the `config.json` file in the root directory of the project.
+   Create a `.env` file in the root directory of the project to securely store your Discord bot token.
+
+   ```bash
+   touch .env
+   ```
+
+   Open the `.env` file and add your bot token:
+
+   ```env
+   TOKEN=YOUR_DISCORD_BOT_TOKEN_HERE
+   ```
+
+   **Note:** Replace `YOUR_DISCORD_BOT_TOKEN_HERE` with your actual Discord bot token. **Never** share your bot token publicly.
+
+4. **Set Up Configuration:**
+
+   Edit the `config.js` file in the root directory of the project to configure your servers and bot settings.
 
 ## Configuration
 
-Configure the bot by editing the `config.json` file. Below is an example structure:
+Configure the bot by editing the `config.js` file. Below is an example structure based on your provided configuration:
 
-```js
+```javascript
 const { ActivityType } = require("discord.js");
 
-const config = {
+module.exports = {
 	Mindustry: {
 		Servers: [
 			{
@@ -80,7 +97,12 @@ const config = {
 				hostname: "194.247.42.130",
 				port: 27505,
 			},
-			// Add more servers as needed
+			{
+				name: "Мертвий сервер",
+				hostname: "194.247.42.132",
+				port: 27505,
+			},
+			// Додайте більше серверів за потребою
 		],
 	},
 
@@ -92,7 +114,7 @@ const config = {
 
 	Bot: {
 		Status: {
-			text: "Слідкую за серверами mindustry",
+			text: "слідкую за серверами mindustry",
 			options: {
 				type: ActivityType.Watching,
 				url: "https://www.twitch.tv/makarasty",
@@ -107,10 +129,36 @@ const config = {
 
 		OnlineEmoji: "<a:online:1260198905564499990>",
 		OfflineEmoji: "<a:offline:1260198907053609113>",
+
+		Messages: {
+			readyForSetup: "Це повідомлення готове до налаштувань!",
+			channelID: "**channelID:** `{channelId}`",
+			messageID: "**messageID:** `{messageId}`",
+			unknownServer: "Невідомий сервер",
+			unknownMap: "Невідома карта",
+			unknownGamemode: "Невідомий режим",
+			updateFrequency: "Оновлення кожну хвилину. В останнє: {lastUpdate}",
+			madeBy: "Створено: {ownerTag}",
+			embedTitle: "Моніторинг серверів Mindustry",
+			embedDescription:
+				"**Серверів**: `{totalServers}`, **Гравців**: `{totalPlayers}`",
+			serverFieldTemplate:
+				"`{hostname}:{port}` **-** **Гравців**: `{currentPlayers}`/`{playerLimit}`\n**Карта**: `{map}` **/** `{gamemode}`",
+			errorGuildNotFound: "Сервер з ID {guildId} не знайдено.",
+			errorChannelNotFound:
+				"Канал з ID {channelId} не знайдено на сервері {guildName}.",
+			errorChannelNotText: "Канал {channelName} не є текстовим каналом.",
+			errorMemberNotFound:
+				"Член з ID {memberId} не знайдений на сервері {guildName}.",
+			errorMessageNotFound:
+				"Повідомлення з ID {messageId} не знайдено в каналі {channelName}.",
+			logBotReady: "Discord бот готовий як користувач: {botTag}",
+			logMessageChanged: "Повідомлення успішно змінено!",
+			errorFetchingData:
+				"Помилка при отриманні даних з сервера {hostname}:{port} - {errorMessage}",
+		},
 	},
 };
-
-module.exports = config;
 ```
 
 ### Configuration Fields:
@@ -139,6 +187,29 @@ module.exports = config;
   - `OnlineEmoji`: Emoji representing an online server (use Discord custom emoji format).
   - `OfflineEmoji`: Emoji representing an offline server (use Discord custom emoji format).
 
+- **Bot.Messages:**
+  - `readyForSetup`: Message displayed when initiating setup.
+  - `channelID`: Template for displaying the channel ID during setup.
+  - `messageID`: Template for displaying the message ID after setup.
+  - `unknownServer`: Default text for unknown servers.
+  - `unknownMap`: Default text for unknown maps.
+  - `unknownGamemode`: Default text for unknown game modes.
+  - `updateFrequency`: Template for footer text indicating update frequency and last update time.
+  - `madeBy`: Template for footer text indicating the bot's creator.
+  - `embedTitle`: Title of the embed message.
+  - `embedDescription`: Description of the embed message, displaying total servers and players.
+  - `serverFieldTemplate`: Template for each server's field in the embed.
+  - **Error Messages:**
+    - `errorGuildNotFound`
+    - `errorChannelNotFound`
+    - `errorChannelNotText`
+    - `errorMemberNotFound`
+    - `errorMessageNotFound`
+    - `errorFetchingData`
+  - **Logging Messages:**
+    - `logBotReady`: Log message when the bot is ready.
+    - `logMessageChanged`: Log message when the embed message is successfully updated.
+
 **Note:** Ensure that your `config.js` exports the configuration correctly and that all necessary dependencies (like `ActivityType` from `discord.js`) are imported as shown.
 
 ## Usage
@@ -151,15 +222,57 @@ module.exports = config;
 
    Ensure that `index.js` is your main entry file. Adjust the command if your main file has a different name.
 
-2. **Bot Functionality:**
+2. **Initial Setup:**
 
-   - The bot will fetch the specified guild, channel, and message upon startup.
-   - It will periodically update the embed message with the latest server statistics.
-   - Typing indicators and error messages will be handled gracefully to inform users of the bot's status.
+   To configure the bot within your Discord server, use the setup command by mentioning the bot followed by the keyword `setup`. For example:
 
-3. **Adding the Bot to Your Server:**
+   ```
+   @BotName setup
+   ```
+
+   **Steps:**
+
+   - **Send Setup Command:** In the desired text channel, mention the bot and append the word `setup` to initiate the setup process.
+
+     ```
+     @BotName setup
+     ```
+
+   - **Receive Setup Confirmation:** The bot will respond with a confirmation message indicating that the setup is ready, along with the `channelID`.
+
+     ```
+     Це повідомлення готове до налаштувань!
+     **channelID:** `1260207524360097823`
+     ```
+
+   - **Message ID Retrieval:** The bot will then edit the setup message to include the `messageID` which is used to track and update the server statuses.
+
+     ```
+     Це повідомлення готове до налаштувань!
+     **channelID:** `1260207524360097823`
+     **messageID:** `1260207710876602409`
+     ```
+
+   - **Finalize Configuration:** Ensure that the retrieved `messageID` is correctly placed in your `config.js` under the `Monitoring.MessageID` field.
+
+3. **Bot Functionality:**
+
+   - **Embed Message Updates:** The bot will automatically update the specified message with real-time server statistics at regular intervals (every 65 seconds by default).
+   - **Status Updates:** The bot's status message will refresh every 30 minutes to reflect any changes or updates.
+   - **Error Handling:** Any issues with fetching server data or configuration will be logged for troubleshooting.
+
+4. **Adding the Bot to Your Server:**
 
    If you haven't added the bot to your Discord server yet, generate an invite link from the [Discord Developer Portal](https://discord.com/developers/applications) with the necessary permissions and invite it to your server.
+
+   **Permissions Required:**
+
+   - Read Messages
+   - Send Messages
+   - Embed Links
+   - Manage Messages
+   - Read Message History
+   - Add Reactions (if using reaction-based commands)
 
 ## License
 

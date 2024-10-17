@@ -10,9 +10,7 @@ const {
 } = require("discord.js");
 
 const mindustry = require("mindustry.js");
-
 const moment = require("moment-timezone");
-
 const config = require("./config.js");
 
 process
@@ -39,6 +37,21 @@ const intents = [
 	GatewayIntentBits.GuildModeration,
 	GatewayIntentBits.Guilds,
 ];
+
+/**
+ * @param {string} template
+ * @param {Record<string, string>} replacements
+ * @returns {string}
+ */
+function replacePlaceholders(template, replacements) {
+	let output = template;
+	for (const key in replacements) {
+		const placeholder = `{${key}}`;
+		const value = replacements[key];
+		output = output.split(placeholder).join(value);
+	}
+	return output;
+}
 
 /**
  * @param {string} message
@@ -77,9 +90,9 @@ class MinServerMonBot extends Client {
 
 /**
  * @param {mindustryServerHost} serverHost
- * @returns {Promise<(mindustryServerHost & {online: boolean} & mindustry.ServerData)?>}
- *  Returns a promise that resolves to an object containing the server host,
- *  server data, and online status if successful, or null if the server is offline or an error occurs.
+ * @returns {Promise<(mindustryServerHost & { online: boolean } & mindustry.ServerData) | null>}
+ *          Returns a promise that resolves to an object containing the server host,
+ *          server data, and online status if successful, or null if the server is offline or an error occurs.
  */
 async function GetMindustryServerStats(serverHost) {
 	const TIMEOUT_DURATION = 5000;
@@ -104,9 +117,15 @@ async function GetMindustryServerStats(serverHost) {
 		}
 	} catch (error) {
 		if (error instanceof Error) {
-			console.error(
-				`Error fetching data from server ${serverHost.hostname}:${serverHost.port} - ${error.message}`,
+			const errorMessage = replacePlaceholders(
+				config.Bot.Messages.errorFetchingData,
+				{
+					hostname: serverHost.hostname,
+					port: String(serverHost.port),
+					errorMessage: error.message,
+				},
 			);
+			console.error(errorMessage);
 		}
 		return null;
 	} finally {
@@ -122,19 +141,30 @@ async function botMessageEvent(client, message) {
 	if (message.channel.isDMBased()) return;
 	if (message.author.bot) return;
 
-	if (!message.content.startsWith(client.user.toString())) return;
-	if (!message.content.endsWith("setup")) return;
+	// Check if the message starts with a mention of the bot
+	const botMentionRegex = new RegExp(`^<@!?${client.user.id}>`, "i");
+	if (!botMentionRegex.test(message.content)) return;
 
-	const content = [
-		"Це повідомлення готове до налаштувань!",
-		`**channelID:** \`${message.channel.id}\``,
+	// Check if the message ends with "setup" (case-insensitive)
+	if (!message.content.toLowerCase().endsWith("setup")) return;
+
+	const contentLines = [
+		config.Bot.Messages.readyForSetup,
+		replacePlaceholders(config.Bot.Messages.channelID, {
+			channelId: message.channel.id,
+		}),
 	];
 
-	const setupMessage = await message.channel.send(content.join("\n"));
+	const setupMessage = await message.channel.send(contentLines.join("\n"));
 
-	content.push(`**messageID:** \`${setupMessage.id}\``);
+	const updatedContentLines = [
+		...contentLines,
+		replacePlaceholders(config.Bot.Messages.messageID, {
+			messageId: setupMessage.id,
+		}),
+	];
 
-	await setupMessage.edit(content.join("\n"));
+	await setupMessage.edit(updatedContentLines.join("\n"));
 }
 
 /**
@@ -145,7 +175,9 @@ async function renameStatusMessage(client) {
 	const guild = await client.guilds.fetch(guildId);
 
 	if (!guild) {
-		throw new Error(`Guild with ID ${guildId} not found.`);
+		throw new Error(
+			replacePlaceholders(config.Bot.Messages.errorGuildNotFound, { guildId }),
+		);
 	}
 
 	const channelId = config.Monitoring.ChannelID;
@@ -158,17 +190,27 @@ async function renameStatusMessage(client) {
 
 	if (!channel) {
 		throw new Error(
-			`Channel with ID ${channelId} not found in guild ${guild.name}.`,
+			replacePlaceholders(config.Bot.Messages.errorChannelNotFound, {
+				channelId,
+				guildName: guild.name,
+			}),
 		);
 	}
 
 	if (!channel.isTextBased()) {
-		throw new Error(`Channel ${channel.name} is not a text-based channel.`);
+		throw new Error(
+			replacePlaceholders(config.Bot.Messages.errorChannelNotText, {
+				channelName: channel.name,
+			}),
+		);
 	}
 
 	if (!owner) {
 		throw new Error(
-			`Member with ID ${ownerId} not found in guild ${guild.name}.`,
+			replacePlaceholders(config.Bot.Messages.errorMemberNotFound, {
+				memberId: ownerId,
+				guildName: guild.name,
+			}),
 		);
 	}
 
@@ -181,7 +223,10 @@ async function renameStatusMessage(client) {
 
 	if (!message) {
 		throw new Error(
-			`Message with ID ${messageId} not found in channel ${channel.name}.`,
+			replacePlaceholders(config.Bot.Messages.errorMessageNotFound, {
+				messageId,
+				channelName: channel.name,
+			}),
 		);
 	}
 
@@ -191,33 +236,38 @@ async function renameStatusMessage(client) {
 		),
 	);
 
-	const totalServers = serversData.length;
-
+	const totalServers = config.Mindustry.Servers.length;
 	const totalPlayers = serversData.reduce((count, server) => {
 		if (server?.online) {
 			return count + server.players;
 		}
-
 		return count;
 	}, 0);
 
-	const footerText = [
-		`Оновлення кожну хвилину. В останнє: ${moment()
-			.tz(config.Bot.Timezone)
-			.locale(config.Bot.TimeLocale)
-			.format(config.Bot.TimeFormat)}`,
-		owner ? `Made by: ${owner.user.tag}` : null,
-	]
-		.filter(Boolean)
-		.join("\n");
+	const lastUpdateTime = moment()
+		.tz(config.Bot.Timezone)
+		.locale(config.Bot.TimeLocale)
+		.format(config.Bot.TimeFormat);
+
+	let footerText = replacePlaceholders(config.Bot.Messages.updateFrequency, {
+		lastUpdate: lastUpdateTime,
+	});
+	if (owner) {
+		footerText += `\n${replacePlaceholders(config.Bot.Messages.madeBy, {
+			ownerTag: owner.user.tag,
+		})}`;
+	}
 
 	const footerIconURL = owner?.user.displayAvatarURL() || undefined;
 
 	const embed = new EmbedBuilder()
 		.setColor(0xffd700)
-		.setTitle("Mindustry Servers Monitoring")
+		.setTitle(config.Bot.Messages.embedTitle)
 		.setDescription(
-			`**Серверів**: \`${totalServers}\`, **Гравців**: \`${totalPlayers}\``,
+			replacePlaceholders(config.Bot.Messages.embedDescription, {
+				totalServers: String(totalServers),
+				totalPlayers: String(totalPlayers),
+			}),
 		)
 		.addFields(
 			serversData.map((server, index) => {
@@ -230,8 +280,8 @@ async function renameStatusMessage(client) {
 					: config.Bot.OfflineEmoji;
 
 				const serverName = server?.name
-					? removeColorCodes(server?.name)
-					: thatServerConfig?.name || "Невідомий сервер";
+					? removeColorCodes(server.name)
+					: thatServerConfig?.name || config.Bot.Messages.unknownServer;
 
 				const { hostname, port } = thatServerConfig || {
 					hostname: "Unknown hostname",
@@ -241,15 +291,23 @@ async function renameStatusMessage(client) {
 				const currentPlayers = server?.players || "0";
 				const playerLimit = server?.playerLimit || "0";
 
-				const map = server?.map || "Невідома карта";
-				const gamemode = server?.gamemode || "Невідомий режим";
+				const map = server?.map || config.Bot.Messages.unknownMap;
+				const gamemode =
+					server?.gamemode || config.Bot.Messages.unknownGamemode;
 
 				const fieldName = `${statusEmoji}\u2000${serverName}`;
 
-				const fieldValue = [
-					`\`${hostname}:${port}\` **-** **Гравців**: \`${currentPlayers}\`/\`${playerLimit}\``,
-					`**Карта**: \`${map}\` **/** \`${gamemode}\``,
-				].join("\n");
+				const fieldValue = replacePlaceholders(
+					config.Bot.Messages.serverFieldTemplate,
+					{
+						hostname,
+						port: String(port),
+						currentPlayers: String(currentPlayers),
+						playerLimit: String(playerLimit),
+						map,
+						gamemode,
+					},
+				);
 
 				return {
 					name: fieldName,
@@ -268,7 +326,11 @@ async function renameStatusMessage(client) {
 		content: null,
 	});
 
-	console.log("Message successfully changed!");
+	console.log(
+		replacePlaceholders(config.Bot.Messages.logMessageChanged, {
+			messageId: message.id,
+		}),
+	);
 }
 
 /**
@@ -285,19 +347,23 @@ async function botSetStatus(client) {
  * @param {Client<true>} client
  */
 async function botReadyEvent(client) {
-	console.info(`Discord bot ready as user: ${client.user.tag}`);
+	console.info(
+		replacePlaceholders(config.Bot.Messages.logBotReady, {
+			botTag: client.user.tag,
+		}),
+	);
 
 	await botSetStatus(client);
 
 	setInterval(async () => {
 		await botSetStatus(client);
-	}, 30 * 60 * 1000);
+	}, 30 * 60 * 1000); // Update status every 30 minutes
 
 	await renameStatusMessage(client);
 
 	setInterval(async () => {
 		await renameStatusMessage(client);
-	}, 65 * 1000);
+	}, 65 * 1000); // Update server status every 65 seconds
 }
 
 new MinServerMonBot().init();
