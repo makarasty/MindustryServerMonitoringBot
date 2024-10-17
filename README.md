@@ -1,6 +1,6 @@
 # Mindustry Server Monitoring Discord Bot
 
-![Bot Banner](https://github.com/user-attachments/assets/93c34b51-cb7c-4161-ad79-5842574b99a2)
+![Bot Banner](https://github.com/user-attachments/assets/941be9f2-6f8c-4e51-967c-ba9b36d96032)
 
 A Discord bot built with Discord.js to monitor and display the status of Mindustry game servers. It provides real-time updates on server activity, player counts, and other vital statistics directly within your Discord server.
 
