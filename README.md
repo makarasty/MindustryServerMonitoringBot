@@ -272,7 +272,6 @@ module.exports = {
    - Embed Links
    - Manage Messages
    - Read Message History
-   - Add Reactions (if using reaction-based commands)
 
 ## License
 
