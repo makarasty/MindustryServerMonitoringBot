@@ -3,10 +3,10 @@
 	"main": "index.js",
 	"author": "MaKarastY",
 	"dependencies": {
-		"discord.js": "^14.16.3",
-		"dotenv": "^16.4.5",
+		"discord.js": "^14.17.3",
+		"dotenv": "^16.4.7",
 		"mindustry.js": "^0.1.5",
-		"moment-timezone": "^0.5.46"
+		"moment-timezone": "^0.5.47"
 	},
 	"scripts": {
 		"start": "node index.js",
